@@ -1,7 +1,6 @@
 import LoanApplication from "./pages/LoanApplication";
+import "./App.css";
 
-function App() {
+export default function App() {
   return <LoanApplication />;
 }
-
-export default App;
