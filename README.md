@@ -1,16 +1,47 @@
-# React + Vite
+A modern and responsive Loan Application Portal built using React, TypeScript, Vite, Zustand, React Hook Form, Zod, and Tailwind CSS. The application guides users through a complete loan application process with validation, document verification, eligibility checks, file uploads, review, e-signature, and final submission.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+🚀 Features
 
-Currently, two official plugins are available:
+Multi-step loan application workflow
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Personal, Address, Loan, and Employment Information forms
 
-## React Compiler
+PAN and Aadhaar verification module
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Document upload and preview functionality
 
-## Expanding the ESLint configuration
+Eligibility checking system
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Review and confirmation page
+
+E-signature support
+
+Success confirmation page
+
+Form validation using React Hook Form and Zod
+
+State management using Zustand
+
+Responsive UI with Tailwind CSS
+
+🛠️ Tech Stack
+
+React.js
+
+JavaScript (ES6+)
+
+TypeScript
+
+Vite
+
+Zustand
+
+React Hook Form
+
+Zod
+
+Tailwind CSS
+
+HTML5
+
+CSS3
