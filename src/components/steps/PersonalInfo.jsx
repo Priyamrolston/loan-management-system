@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { personalSchema } from "../../validation/schemas";
 import { useLoanStore } from "../../store/loanStore";
+import { verifyPAN, verifyAadhaar } from "../../services/verification";
 
 export default function PersonalInfo() {
   const {
@@ -15,6 +16,7 @@ export default function PersonalInfo() {
   } = useLoanStore();
 
   const [verifying, setVerifying] = useState({ pan: false, aadhaar: false });
+  const [verifyError, setVerifyError] = useState({ pan: "", aadhaar: "" });
 
   const {
     register,
@@ -41,22 +43,39 @@ export default function PersonalInfo() {
   };
 
   const verifyDoc = async (type) => {
-    // Trigger validation for this specific field
+    const val = getValues(type);
     const isDocValid = await trigger(type);
     if (!isDocValid) return;
 
     setVerifying((prev) => ({ ...prev, [type]: true }));
-    setTimeout(() => {
+    setVerifyError((prev) => ({ ...prev, [type]: "" }));
+
+    try {
+      const isValid = type === "pan" ? await verifyPAN(val) : await verifyAadhaar(val);
+      if (isValid) {
+        setVerificationStatus(type, true);
+        updateForm({ [type]: val });
+      } else {
+        setVerificationStatus(type, false);
+        setVerifyError((prev) => ({
+          ...prev,
+          [type]: type === "pan"
+            ? "PAN verification failed. Invalid format or number."
+            : "Aadhaar verification failed. Must be a valid 12-digit number.",
+        }));
+      }
+    } catch (e) {
+      setVerifyError((prev) => ({ ...prev, [type]: "Verification service unavailable. Try again." }));
+    } finally {
       setVerifying((prev) => ({ ...prev, [type]: false }));
-      setVerificationStatus(type, true);
-      updateForm({ [type]: getValues(type) });
-    }, 1500);
+    }
   };
 
   // When user edits PAN after it was verified, reset verification status
   const handlePanChange = (e) => {
     const upper = e.target.value.toUpperCase();
     setValue("pan", upper, { shouldValidate: true });
+    setVerifyError((prev) => ({ ...prev, pan: "" }));
     if (verificationStatus.pan) {
       setVerificationStatus("pan", false);
     }
@@ -65,6 +84,7 @@ export default function PersonalInfo() {
   const handleAadhaarChange = (e) => {
     const digits = e.target.value.replace(/\D/g, ""); // strip non-digits
     setValue("aadhaar", digits, { shouldValidate: true });
+    setVerifyError((prev) => ({ ...prev, aadhaar: "" }));
     if (verificationStatus.aadhaar) {
       setVerificationStatus("aadhaar", false);
     }
@@ -172,7 +192,10 @@ export default function PersonalInfo() {
         {errors.pan && (
           <span className="error-msg">⚠ {errors.pan.message}</span>
         )}
-        {!errors.pan && !verificationStatus.pan && (
+        {verifyError.pan && (
+          <span className="error-msg" style={{ display: "block" }}>⚠ {verifyError.pan}</span>
+        )}
+        {!errors.pan && !verifyError.pan && !verificationStatus.pan && (
           <span style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem", display: "block" }}>
             Format: 5 letters + 4 digits + 1 letter (e.g. ABCDE1234F)
           </span>
@@ -218,7 +241,10 @@ export default function PersonalInfo() {
         {errors.aadhaar && (
           <span className="error-msg">⚠ {errors.aadhaar.message}</span>
         )}
-        {!errors.aadhaar && !verificationStatus.aadhaar && (
+        {verifyError.aadhaar && (
+          <span className="error-msg" style={{ display: "block" }}>⚠ {verifyError.aadhaar}</span>
+        )}
+        {!errors.aadhaar && !verifyError.aadhaar && !verificationStatus.aadhaar && (
           <span style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem", display: "block" }}>
             Must be exactly 12 digits (no spaces)
           </span>

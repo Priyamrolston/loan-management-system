@@ -4,13 +4,80 @@ import { useLoanStore } from "../../store/loanStore";
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+const formatSize = (bytes) => {
+  if (bytes >= 1024 * 1024) {
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  }
+  return (bytes / 1024).toFixed(1) + " KB";
+};
+
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    if (file.type === "application/pdf") {
+      resolve({
+        compressedDataUrl: null,
+        compressedSize: file.size,
+        originalSize: file.size,
+        savedPct: 0
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+        const head = "data:image/jpeg;base64,";
+        const base64Str = dataUrl.substring(head.length);
+        const padding = base64Str.endsWith("==") ? 2 : base64Str.endsWith("=") ? 1 : 0;
+        const compressedSize = (base64Str.length * 3) / 4 - padding;
+        const savedPct = Math.round(((file.size - compressedSize) / file.size) * 100);
+
+        resolve({
+          compressedDataUrl: dataUrl,
+          compressedSize,
+          originalSize: file.size,
+          savedPct: Math.max(0, savedPct)
+        });
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 function DropzoneUpload({ label, required, type, uploads, setUploads }) {
   const file = uploads[type];
-  // Bug fix: track rejected files to show an error message
   const [rejectionMsg, setRejectionMsg] = useState("");
+  const [compressing, setCompressing] = useState(false);
 
   const onDrop = useCallback(
-    (acceptedFiles, rejectedFiles) => {
+    async (acceptedFiles, rejectedFiles) => {
       setRejectionMsg("");
       if (rejectedFiles && rejectedFiles.length > 0) {
         const reason = rejectedFiles[0].errors[0];
@@ -25,17 +92,20 @@ function DropzoneUpload({ label, required, type, uploads, setUploads }) {
       }
       const f = acceptedFiles[0];
       if (!f) return;
+
+      setCompressing(true);
+      const compResult = await compressImage(f);
+      setCompressing(false);
+
       setUploads((prev) => ({
         ...prev,
         [type]: {
           name: f.name,
-          // Bug fix: show both KB and MB for large files
-          size:
-            f.size >= 1024 * 1024
-              ? (f.size / (1024 * 1024)).toFixed(2) + " MB"
-              : (f.size / 1024).toFixed(1) + " KB",
-          preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null,
           type: f.type,
+          originalSize: formatSize(compResult.originalSize),
+          size: formatSize(compResult.compressedSize),
+          preview: compResult.compressedDataUrl || null,
+          savedPct: compResult.savedPct,
         },
       }));
     },
@@ -66,14 +136,29 @@ function DropzoneUpload({ label, required, type, uploads, setUploads }) {
           </div>
           <div className="file-preview-body">
             <div className="file-preview-name">{file.name}</div>
-            <div className="file-preview-size">{file.size}</div>
+            <div className="file-preview-size">
+              {file.type === "application/pdf" ? (
+                file.size
+              ) : (
+                <>
+                  <span style={{ textDecoration: "line-through", color: "#9ca3af", marginRight: "6px" }}>
+                    {file.originalSize}
+                  </span>
+                  <strong style={{ color: "#16a34a" }}>{file.size}</strong>
+                  {file.savedPct > 0 && (
+                    <span className="badge badge-success" style={{ marginLeft: "8px", fontSize: "0.7rem", padding: "0.15rem 0.4rem" }}>
+                      Saved {file.savedPct}%
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <button
             type="button"
             className="btn-danger-ghost"
             onClick={() => {
-              // Bug fix: revoke object URL to avoid memory leak
-              if (file.preview) URL.revokeObjectURL(file.preview);
+              if (file.preview && !file.preview.startsWith("data:")) URL.revokeObjectURL(file.preview);
               setUploads((prev) => ({ ...prev, [type]: null }));
             }}
           >
@@ -103,6 +188,7 @@ function DropzoneUpload({ label, required, type, uploads, setUploads }) {
     <div className="form-group">
       <label>
         {label} {required && <span className="required">*</span>}
+        {compressing && <span style={{ marginLeft: "8px", fontSize: "0.75rem", color: "#2563eb" }}>Compressing…</span>}
       </label>
       <div
         {...getRootProps()}

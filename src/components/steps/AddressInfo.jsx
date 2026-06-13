@@ -38,6 +38,65 @@ const PINCODE_MAP = {
   "682001": { city: "Kochi", state: "Kerala" },
 };
 
+const MOCK_SUGGESTIONS = [
+  {
+    display: "Flat 402, Oakwood Apartments, Bandra West, Mumbai, Maharashtra - 400001",
+    address: "Flat 402, Oakwood Apartments, Bandra West",
+    pincode: "400001",
+    city: "Mumbai",
+    state: "Maharashtra"
+  },
+  {
+    display: "House 15, Sector 15A, Noida, Uttar Pradesh - 201301",
+    address: "House 15, Sector 15A",
+    pincode: "201301",
+    city: "Noida",
+    state: "Uttar Pradesh"
+  },
+  {
+    display: "No. 45, Residency Road, Richmond Town, Bengaluru, Karnataka - 560001",
+    address: "No. 45, Residency Road, Richmond Town",
+    pincode: "560001",
+    city: "Bengaluru",
+    state: "Karnataka"
+  },
+  {
+    display: "Plot 120, Jubilee Hills, Road No. 10, Hyderabad, Telangana - 500001",
+    address: "Plot 120, Jubilee Hills, Road No. 10",
+    pincode: "500001",
+    city: "Hyderabad",
+    state: "Telangana"
+  },
+  {
+    display: "Flat 12A, DLF Phase 3, Gurugram, Haryana - 122001",
+    address: "Flat 12A, DLF Phase 3",
+    pincode: "122001",
+    city: "Gurugram",
+    state: "Haryana"
+  },
+  {
+    display: "12 General Patters Road, Mount Road, Chennai, Tamil Nadu - 600002",
+    address: "12 General Patters Road, Mount Road",
+    pincode: "600002",
+    city: "Chennai",
+    state: "Tamil Nadu"
+  },
+  {
+    display: "A-88, Shanti Path, Tilak Nagar, Jaipur, Rajasthan - 302002",
+    address: "A-88, Shanti Path, Tilak Nagar",
+    pincode: "302002",
+    city: "Jaipur",
+    state: "Rajasthan"
+  },
+  {
+    display: "55/A Park Street, Elgin, Kolkata, West Bengal - 700002",
+    address: "55/A Park Street, Elgin",
+    pincode: "700002",
+    city: "Kolkata",
+    state: "West Bengal"
+  }
+];
+
 export default function AddressInfo() {
   const { formData, updateForm, currentStep, setStep } = useLoanStore();
   const [pincodeLooking, setPincodeLooking] = useState(false);
@@ -47,6 +106,7 @@ export default function AddressInfo() {
   );
   // Bug fix: track if pincode was not found in our map so we can show an error
   const [pincodeNotFound, setPincodeNotFound] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const {
     register,
@@ -67,6 +127,13 @@ export default function AddressInfo() {
   });
 
   const pincode = watch("pincode");
+  const addressVal = watch("address");
+
+  const filteredSuggestions = addressVal && addressVal.trim().length >= 3
+    ? MOCK_SUGGESTIONS.filter((item) =>
+        item.display.toLowerCase().includes(addressVal.toLowerCase())
+      )
+    : [];
 
   useEffect(() => {
     // Only digits allowed in pincode
@@ -112,11 +179,36 @@ export default function AddressInfo() {
         <label>
           Residential Address <span className="required">*</span>
         </label>
-        <textarea
-          placeholder="House/Flat No., Street, Area, Locality"
-          {...register("address")}
-          rows={3}
-        />
+        <div className="autocomplete-wrapper" style={{ position: "relative" }}>
+          <textarea
+            placeholder="House/Flat No., Street, Area, Locality (Type 3+ chars for suggestions)"
+            {...register("address")}
+            rows={3}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
+          />
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <ul className="autocomplete-suggestions">
+              {filteredSuggestions.map((item, i) => (
+                <li
+                  key={i}
+                  className="autocomplete-suggestion-item"
+                  onMouseDown={() => {
+                    setValue("address", item.address, { shouldValidate: true });
+                    setValue("pincode", item.pincode, { shouldValidate: true });
+                    setValue("city", item.city, { shouldValidate: true });
+                    setValue("state", item.state, { shouldValidate: true });
+                    setPincodeFound(true);
+                    setPincodeNotFound(false);
+                    setShowSuggestions(false);
+                  }}
+                >
+                  {item.display}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {errors.address && (
           <span className="error-msg">⚠ {errors.address.message}</span>
         )}

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useLoanStore } from "../store/loanStore";
 import PersonalInfo from "../components/steps/PersonalInfo";
 import AddressInfo from "../components/steps/AddressInfo";
@@ -23,7 +24,14 @@ const STEPS = [
 ];
 
 export default function LoanApplication() {
-  const { currentStep } = useLoanStore();
+  const { currentStep, maxStepReached, setStep, resetAll } = useLoanStore();
+  const [showResumeToast, setShowResumeToast] = useState(false);
+
+  useEffect(() => {
+    if (maxStepReached > 1 && currentStep > 1) {
+      setShowResumeToast(true);
+    }
+  }, []);
 
   const renderStep = () => {
     switch (currentStep) {
@@ -69,13 +77,26 @@ export default function LoanApplication() {
 
         <ul className="sidebar-nav">
           {STEPS.map((step) => {
+            const isCompleted = currentStep > step.id;
+            const isActive = currentStep === step.id;
+            const isSelectable = step.id <= maxStepReached;
             let cls = "sidebar-step";
-            if (currentStep > step.id) cls += " completed";
-            else if (currentStep === step.id) cls += " active";
+            if (isCompleted) cls += " completed";
+            else if (isActive) cls += " active";
+            if (isSelectable) cls += " selectable";
             return (
-              <li key={step.id} className={cls}>
+              <li
+                key={step.id}
+                className={cls}
+                onClick={() => {
+                  if (isSelectable) {
+                    setStep(step.id);
+                  }
+                }}
+                style={isSelectable ? { cursor: "pointer" } : undefined}
+              >
                 <div className="sidebar-step-num">
-                  {currentStep > step.id ? "✓" : step.id}
+                  {isCompleted ? "✓" : step.id}
                 </div>
                 <span className="sidebar-step-label">{step.label}</span>
               </li>
@@ -96,6 +117,31 @@ export default function LoanApplication() {
 
       {/* Main */}
       <main className="main-content">
+        {showResumeToast && (
+          <div className="draft-resume-banner">
+            <span>📂 Draft resumed from your previous auto-saved session.</span>
+            <div className="draft-resume-banner-actions">
+              <button
+                onClick={() => setShowResumeToast(false)}
+                className="btn btn-sm btn-ghost"
+                style={{ color: "#2563eb", fontWeight: 600, padding: "0.25rem 0.5rem" }}
+              >
+                Keep Drafting
+              </button>
+              <button
+                onClick={() => {
+                  resetAll();
+                  setShowResumeToast(false);
+                }}
+                className="btn btn-sm btn-danger-ghost"
+                style={{ marginLeft: "8px", padding: "0.25rem 0.5rem" }}
+              >
+                Start Fresh
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="content-header">
           <div className="content-header-left">
             <h2>{currentStepData.label}</h2>
